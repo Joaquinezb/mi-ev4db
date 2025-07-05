@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Tienda - CRUD y Consultas</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+        h2 { color: #444; margin-top: 30px; }
+        form, .section { background: #fff; padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 0 5px #ccc; }
+        input, select { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button { padding: 8px 16px; margin-top: 10px; cursor: pointer; }
+        .item { border-bottom: 1px solid #ddd; padding: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Sistema de Gestión Tienda</h1>
+
+    <!-- CRUD Clientes -->
+    <div class="section">
+        <h2>Clientes</h2>
+        <form id="form-cliente">
+            <input type="hidden" name="_id">
+            <input type="text" name="nombre" placeholder="Nombre" required>
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="tel" name="telefono" placeholder="Teléfono" required>
+            <input type="text" name="ciudad" placeholder="Ciudad" required>
+            <button type="submit">Guardar Cliente</button>
+        </form>
+        <div id="lista-clientes"></div>
+    </div>
+
+    <!-- CRUD Productos -->
+    <div class="section">
+        <h2>Productos</h2>
+        <form id="form-producto">
+            <input type="hidden" name="_id">
+            <input type="text" name="codigo" placeholder="Código" required>
+            <input type="text" name="nombre" placeholder="Nombre" required>
+            <input type="number" name="precio" placeholder="Precio" required>
+            <input type="text" name="descripcion" placeholder="Descripción">
+            <input type="number" name="stock" placeholder="Stock" required>
+            <button type="submit">Guardar Producto</button>
+        </form>
+        <div id="lista-productos"></div>
+    </div>
+
+    <!-- CRUD Pedidos -->
+    <div class="section">
+        <h2>Pedidos</h2>
+        <form id="form-pedido">
+            <select name="clienteId" required></select>
+            <input type="number" name="total" placeholder="Total" required>
+            <select name="estado">
+                <option value="pendiente">Pendiente</option>
+                <option value="procesando">Procesando</option>
+                <option value="completado">Completado</option>
+                <option value="cancelado">Cancelado</option>
+            </select>
+            <button type="submit">Guardar Pedido</button>
+        </form>
+        <div id="lista-pedidos"></div>
+    </div>
+
+    <!-- CONSULTAS -->
+    <div class="section">
+        <h2>Consultas</h2>
+        <div>
+            <h3>Clientes por Ciudad</h3>
+            <input type="text" id="ciudad-buscar" placeholder="Ciudad">
+            <button onclick="buscarClientesPorCiudad()">Buscar</button>
+            <div id="resultado-ciudad"></div>
+        </div>
+
+        <div>
+            <h3>Clientes por Fecha de Registro</h3>
+            <input type="date" id="fecha-buscar">
+            <button onclick="buscarClientesPorFecha()">Buscar</button>
+            <div id="resultado-fecha"></div>
+        </div>
+
+        <div>
+            <h3>Producto por Código</h3>
+            <input type="text" id="codigo-buscar" placeholder="Código del producto">
+            <button onclick="buscarProductoPorCodigo()">Buscar</button>
+            <div id="resultado-codigo"></div>
+        </div>
+
+        <div>
+            <h3>Pedidos por Cliente</h3>
+            <select id="cliente-pedidos"></select>
+            <button onclick="buscarPedidosPorCliente()">Buscar</button>
+            <div id="resultado-pedidos-cliente"></div>
+        </div>
+    </div>
+
+    <script>
+    // CLIENTES
+    const formCliente = document.getElementById('form-cliente');
+    const listaClientes = document.getElementById('lista-clientes');
+    const clienteSelect = document.querySelector('#form-pedido select[name="clienteId"]');
+    const clientePedidosSelect = document.getElementById('cliente-pedidos');
+
+    formCliente.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const datos = Object.fromEntries(new FormData(formCliente));
+        const metodo = datos._id ? 'PUT' : 'POST';
+        const url = datos._id ? `/api/clientes/${datos._id}` : '/api/clientes';
+        delete datos._id;
+        await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
+        formCliente.reset(); cargarClientes();
+    });
+
+    async function cargarClientes() {
+        const res = await fetch('/api/clientes');
+        const clientes = await res.json();
+        listaClientes.innerHTML = clienteSelect.innerHTML = clientePedidosSelect.innerHTML = '';
+        clientes.forEach(c => {
+            listaClientes.innerHTML += `<div class='item'><strong>${c.nombre}</strong> (${c.ciudad}) - ${c.email} <button onclick='editarCliente(${JSON.stringify(c)})'>Editar</button> <button onclick='eliminarCliente("${c._id}")'>Eliminar</button></div>`;
+            clienteSelect.innerHTML += `<option value="${c._id}">${c.nombre}</option>`;
+            clientePedidosSelect.innerHTML += `<option value="${c._id}">${c.nombre}</option>`;
+        });
+    }
+
+    function editarCliente(c) { for (const k in c) if (formCliente[k]) formCliente[k].value = c[k]; }
+    async function eliminarCliente(id) { if (confirm('¿Eliminar?')) { await fetch(`/api/clientes/${id}`, { method: 'DELETE' }); cargarClientes(); } }
+
+    // PRODUCTOS
+    const formProducto = document.getElementById('form-producto');
+    const listaProductos = document.getElementById('lista-productos');
+
+    formProducto.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const datos = Object.fromEntries(new FormData(formProducto));
+        const metodo = datos._id ? 'PUT' : 'POST';
+        const url = datos._id ? `/api/productos/${datos._id}` : '/api/productos';
+        delete datos._id;
+        await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
+        formProducto.reset(); cargarProductos();
+    });
+
+    async function cargarProductos() {
+        const res = await fetch('/api/productos');
+        const productos = await res.json();
+        listaProductos.innerHTML = '';
+        productos.forEach(p => {
+            listaProductos.innerHTML += `<div class='item'><strong>${p.nombre}</strong> - ${p.codigo} ($${p.precio}) <button onclick='editarProducto(${JSON.stringify(p)})'>Editar</button> <button onclick='eliminarProducto("${p._id}")'>Eliminar</button></div>`;
+        });
+    }
+
+    function editarProducto(p) { for (const k in p) if (formProducto[k]) formProducto[k].value = p[k]; }
+    async function eliminarProducto(id) { if (confirm('¿Eliminar?')) { await fetch(`/api/productos/${id}`, { method: 'DELETE' }); cargarProductos(); } }
+
+    // PEDIDOS
+    const formPedido = document.getElementById('form-pedido');
+    const listaPedidos = document.getElementById('lista-pedidos');
+
+    formPedido.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const datos = Object.fromEntries(new FormData(formPedido));
+        await fetch('/api/pedidos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
+        formPedido.reset(); cargarPedidos();
+    });
+
+    async function cargarPedidos() {
+        const res = await fetch('/api/pedidos');
+        const pedidos = await res.json();
+        listaPedidos.innerHTML = '';
+        pedidos.forEach(p => {
+            listaPedidos.innerHTML += `<div class='item'>Cliente: ${p.clienteId?.nombre || p.clienteId} - $${p.total} (${p.estado})</div>`;
+        });
+    }
+
+    // CONSULTAS
+    async function buscarClientesPorCiudad() {
+        const ciudad = document.getElementById('ciudad-buscar').value;
+        const res = await fetch(`/api/clientes/ciudad/${ciudad}`);
+        const data = await res.json();
+        document.getElementById('resultado-ciudad').innerText = data.map(c => c.nombre).join(', ');
+    }
+
+    async function buscarClientesPorFecha() {
+        const fecha = document.getElementById('fecha-buscar').value;
+        const res = await fetch(`/api/clientes/fecha/${fecha}`);
+        const data = await res.json();
+        document.getElementById('resultado-fecha').innerText = data.map(c => c.nombre).join(', ');
+    }
+
+    async function buscarProductoPorCodigo() {
+        const codigo = document.getElementById('codigo-buscar').value;
+        const res = await fetch(`/api/productos/codigo/${codigo}`);
+        const data = await res.json();
+        document.getElementById('resultado-codigo').innerText = data.nombre ? `${data.nombre} - $${data.precio}` : 'No encontrado';
+    }
+
+    async function buscarPedidosPorCliente() {
+        const id = document.getElementById('cliente-pedidos').value;
+        const res = await fetch(`/api/pedidos/cliente/${id}`);
+        const data = await res.json();
+        document.getElementById('resultado-pedidos-cliente').innerText = data.map(p => `$${p.total} - ${p.estado}`).join('\n');
+    }
+
+    window.onload = () => {
+        cargarClientes();
+        cargarProductos();
+        cargarPedidos();
+    }
+    </script>
+</body>
+</html>
