@@ -141,16 +141,20 @@
                 const res = await fetch('/api/clientes');
                 const clientes = await res.json();
                 
-                document.getElementById('lista-clientes').innerHTML = clientes.map(c => `
+                document.getElementById('lista-clientes').innerHTML = clientes.map(c => {
+                    const fecha = c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString('es-CL') : '';
+                    return `
                     <div class="item">
                         <strong>${c.nombre}</strong> - ${c.ciudad}<br>
-                        ${c.email} | ${c.telefono}
+                        ${c.email} | ${c.telefono}<br>
+                        <span style="color:#888;font-size:0.95em">Fecha ingreso: ${fecha}</span>
                         <div class="buttons">
-                            <button onclick="editarCliente(${JSON.stringify(c).replace(/"/g, '&quot;')})">Editar</button>
-                            <button class="delete" onclick="eliminarCliente('${c._id}')">Eliminar</button>
+                            <button onclick=\"editarCliente(${JSON.stringify(c).replace(/\"/g, '&quot;')})\">Editar</button>
+                            <button class=\"delete\" onclick=\"eliminarCliente('${c._id}')\">Eliminar</button>
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (error) {
                 console.error('Error:', error);
             }
