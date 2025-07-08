@@ -50,4 +50,35 @@ router.get('/cliente/:clienteId', async (req, res) => {
   }
 });
 
+
+// Actualizar pedido
+router.put('/:id', async (req, res) => {
+  try {
+    // Calcular total actualizado
+    let total = 0;
+    for (const item of req.body.productos) {
+      const producto = await Producto.findById(item.productoId);
+      total += producto.precio * item.cantidad;
+    }
+    const pedidoActualizado = await Pedido.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, total },
+      { new: true }
+    );
+    res.json(pedidoActualizado);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Eliminar pedido
+router.delete('/:id', async (req, res) => {
+  try {
+    await Pedido.findByIdAndDelete(req.params.id);
+    res.json({ mensaje: 'Pedido eliminado' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 module.exports = router;
