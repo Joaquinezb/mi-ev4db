@@ -5,23 +5,119 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Tienda</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 5px; }
-        h1 { text-align: center; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
-        h2 { color: #555; margin: 20px 0 10px 0; }
-        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        input, select, button { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 3px; }
-        button { background: #007bff; color: white; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .delete { background: #dc3545; }
-        .delete:hover { background: #c82333; }
-        .item { background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 3px; }
-        .buttons { display: flex; gap: 5px; margin-top: 10px; }
-        .result { background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 3px; }
-        .product-item { display: flex; gap: 10px; margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 3px; }
-        .product-item select, .product-item input { margin: 0; }
-        .product-item button { width: auto; padding: 5px 10px; }
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background: #E6ECF3;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+  border-bottom: 2px solid #2563EB; /* Coincide con el azul del botón principal */
+  padding-bottom: 10px;
+}
+
+h2 {
+  color: #555;
+  margin: 20px 0 10px 0;
+}
+
+.section {
+  margin: 20px 0;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+form {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input, select, button {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  margin: 5px 0;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 1em;
+}
+
+button {
+  background: #2563EB;
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #1D4ED8; /* Hover azul más oscuro */
+}
+
+.delete {
+  background: #DC2626;
+  color: #fff;
+}
+
+.delete:hover {
+  background: #B91C1C; /* Hover rojo más profundo */
+}
+
+.item {
+  background: #f8f9fa;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 3px;
+}
+
+.buttons {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.result {
+  background: #e7f3ff;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 3px;
+}
+
+.product-item {
+  display: flex;
+  gap: 10px;
+  margin: 5px 0;
+  padding: 5px;
+  background: #f0f0f0;
+  border-radius: 3px;
+}
+
+.product-item select,
+.product-item input {
+  margin: 0;
+}
+
+.product-item button {
+  width: auto;
+  padding: 5px 10px;
+}
     </style>
 </head>
 <body>
@@ -48,7 +144,20 @@
                     <input type="hidden" name="_id">
                     <input name="codigo" placeholder="Código" required>
                     <input name="nombre" placeholder="Nombre" required>
-                    <input name="precio" type="number" step="0.01" placeholder="Precio" required>
+                    <input name="precio" type="number" step="0.01" placeholder="Precio" required onkeydown="return event.key !== 'ArrowUp' && event.key !== 'ArrowDown'">
+                    <style>
+                        /* Oculta los botones de incremento/decremento en input type=number solo para precio */
+                        input[name="precio"]::-webkit-inner-spin-button,
+                        input[name="precio"]::-webkit-outer-spin-button {
+                            -webkit-appearance: none;
+                            margin: 0;
+                        }
+                        input[name="precio"] {
+    appearance: textfield;
+    -webkit-appearance: textfield;
+    -moz-appearance: textfield;
+}
+                    </style>
                     <input name="descripcion" placeholder="Descripción">
                     <input name="stock" type="number" placeholder="Stock" required>
                     <button type="submit">Guardar</button>
@@ -212,13 +321,12 @@
                 const res = await fetch('/api/productos');
                 const productos = await res.json();
                 productosDisponibles = productos;
-                
                 document.getElementById('lista-productos').innerHTML = productos.map(p => `
                     <div class="item">
-                        <strong>${p.nombre}</strong> - $${p.precio}<br>
+                        <strong>${p.nombre}</strong> - ${Number(p.precio).toLocaleString('es-CL', {style:'currency', currency:'CLP'})}<br>
                         Código: ${p.codigo} | Stock: ${p.stock}
                         <div class="buttons">
-                            <button onclick="editarProducto(${JSON.stringify(p).replace(/"/g, '&quot;')})">Editar</button>
+                            <button onclick="editarProducto(${JSON.stringify(p).replace(/\"/g, '&quot;')})">Editar</button>
                             <button class="delete" onclick="eliminarProducto('${p._id}')">Eliminar</button>
                         </div>
                     </div>
@@ -250,7 +358,7 @@
             div.innerHTML = `
                 <select name="productos[${contadorProductos}][productoId]" required>
                     <option value="">Producto</option>
-                    ${productosDisponibles.map(p => `<option value="${p._id}">${p.nombre} ($${p.precio})</option>`).join('')}
+                    ${productosDisponibles.map(p => `<option value="${p._id}">${p.nombre} (${Number(p.precio).toLocaleString('es-CL', {style:'currency', currency:'CLP'})})</option>`).join('')}
                 </select>
                 <input name="productos[${contadorProductos}][cantidad]" type="number" min="1" value="1" required>
                 <button type="button" class="delete" onclick="this.parentElement.remove()">X</button>
@@ -263,12 +371,21 @@
             const form = e.target;
             const formData = new FormData(form);
             const productos = [];
+            let errorStock = false;
             for (let i = 1; i <= contadorProductos; i++) {
                 const productoId = formData.get(`productos[${i}][productoId]`);
                 const cantidad = formData.get(`productos[${i}][cantidad]`);
                 if (productoId && cantidad) {
+                    const prod = productosDisponibles.find(p => p._id === productoId);
+                    if (prod && parseInt(cantidad) > prod.stock) {
+                        errorStock = true;
+                    }
                     productos.push({ productoId, cantidad: parseInt(cantidad) });
                 }
+            }
+            if (errorStock) {
+                alert('No puedes pedir más unidades de un producto que el stock disponible.');
+                return;
             }
             const pedidoId = form.getAttribute('data-id');
             try {
@@ -282,7 +399,7 @@
                     })
                 });
                 const pedido = await response.json();
-                alert(pedidoId ? `Pedido actualizado. Total: $${pedido.total}` : `Pedido creado. Total: $${pedido.total}`);
+                alert(pedidoId ? `Pedido actualizado. Total: ${Number(pedido.total).toLocaleString('es-CL', {style:'currency', currency:'CLP'})}` : `Pedido creado. Total: ${Number(pedido.total).toLocaleString('es-CL', {style:'currency', currency:'CLP'})}`);
                 form.reset();
                 document.getElementById('productos-container').innerHTML = '';
                 contadorProductos = 0;
@@ -302,7 +419,7 @@
                     <div class="item">
                         <strong>Pedido #${p._id.substring(0, 6)}</strong><br>
                         Cliente: ${p.clienteId?.nombre || 'N/A'}<br>
-                        Total: $${p.total} | Estado: ${p.estado}<br>
+                        Total: ${Number(p.total).toLocaleString('es-CL', {style:'currency', currency:'CLP'})} | Estado: ${p.estado}<br>
                         ${p.productos.map(pr => `${pr.cantidad}x ${pr.productoId?.nombre || 'Producto'}`).join(', ')}
                         <div class="buttons">
                             <button onclick='editarPedido(${JSON.stringify(p).replace(/"/g, "&quot;")})'>Editar</button>
