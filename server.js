@@ -43,8 +43,9 @@ app.use((err, req, res, next) => {
 });
 
 // 5. RUTA COMODÍN PARA FRONTEND (al final)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Redirigir ruta raíz a login
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Conexión a MongoDB

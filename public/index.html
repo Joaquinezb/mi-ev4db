@@ -602,7 +602,7 @@ button:hover {
                 const res = await fetch(`/api/productos/codigo/${codigo}`);
                 const p = await res.json();
                 document.getElementById('resultado-codigo').innerHTML = p.nombre ?
-                    `<strong>${p.nombre}</strong><br>Código: ${p.codigo}<br>Precio: $${p.precio}<br>Stock: ${p.stock}` :
+                    `<strong>${p.nombre}</strong><br>Código: ${p.codigo}<br>Precio: $${p.precio}<br>Stock: ${p.stock}<br>Descripción: ${p.descripcion}`:
                     'No encontrado';
             } catch (error) {
                 alert('Error: ' + error.message);
