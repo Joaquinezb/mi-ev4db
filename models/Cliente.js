@@ -8,8 +8,7 @@ const clienteSchema = new mongoose.Schema({
     numero: { type: String, required: true },
     ciudad: { type: String, required: true }
   },
-  // email eliminado, ya no es requerido ni parte del modelo
-  telefono: { type: String, required: true },
+  telefono: { type: String, required: true, unique: true },
   fechaRegistro: { type: Date, default: Date.now }
 });
 

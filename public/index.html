@@ -22,7 +22,7 @@ body {
 h1 {
   text-align: center;
   color: #333;
-  border-bottom: 2px solid #2563EB; /* Coincide con el azul del botón principal */
+  border-bottom: 2px solid #2563EB; 
   padding-bottom: 10px;
 }
 
@@ -131,7 +131,7 @@ button:hover {
                     <input type="hidden" name="_id">
                     <input name="nombre" placeholder="Nombre" required>
                     <input name="apellidos" placeholder="Apellidos" required>
-                    <input name="telefono" placeholder="Teléfono" required>
+                    <input name="telefono" placeholder="Teléfono" required pattern="^\+?\d{1,12}$" maxlength="13" title="Solo números y opcionalmente un + al inicio, máximo 13 caracteres">
                     <input name="direccion[calle]" placeholder="Calle" required>
                     <input name="direccion[numero]" placeholder="Número" required>
                     <input name="direccion[ciudad]" placeholder="Ciudad" required>
@@ -146,7 +146,7 @@ button:hover {
                     <input type="hidden" name="_id">
                     <input name="codigo" placeholder="Código" required>
                     <input name="nombre" placeholder="Nombre" required>
-                    <input name="precio" type="number" step="0.01" placeholder="Precio" required onkeydown="return event.key !== 'ArrowUp' && event.key !== 'ArrowDown'">
+                    <input name="precio" type="number" step="0.01" placeholder="Precio unitario" required onkeydown="return event.key !== 'ArrowUp' && event.key !== 'ArrowDown'">
                     <style>
                         /* Oculta los botones de incremento/decremento en input type=number solo para precio */
                         input[name="precio"]::-webkit-inner-spin-button,
@@ -164,7 +164,7 @@ button:hover {
                     <input name="stock" type="number" placeholder="Stock" required>
                     <select name="estado" required>
                         <option value="activo">Activo</option>
-                        <option value="inactivo">Inactivo</option>
+                        <option value="precio">Inactivo</option>
                         <option value="descontinuado">Descontinuado</option>
                     </select>
                     <button type="submit">Guardar</button>
@@ -252,7 +252,14 @@ button:hover {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(datos)
                 });
-                if (!response.ok) throw new Error('Error en la solicitud');
+                if (!response.ok) {
+                    let msg = 'Error en la solicitud';
+                    try {
+                        const resJson = await response.json();
+                        if (resJson && resJson.error) msg = resJson.error;
+                    } catch {}
+                    throw new Error(msg);
+                }
                 form.reset();
                 // Asegurarse de limpiar el campo _id después de guardar
                 form.querySelector('[name="_id"]').value = "";
@@ -489,10 +496,15 @@ button:hover {
                         const year = date.getUTCFullYear();
                         fechaPedido = `${day}-${month}-${year}`;
                     }
+                    let clienteResumen = 'N/A';
+                    if (p.clienteId) {
+                        let cli = p.clienteId;
+                        clienteResumen = `${cli.nombre || ''} ${cli.apellidos || ''} (${cli.telefono || ''})`;
+                    }
                     return `
                     <div class="item">
                         <strong>Pedido #${p._id.substring(0, 6)}</strong><br>
-                        Cliente: ${p.clienteId?.nombre || 'N/A'}<br>
+                        Cliente: ${clienteResumen}<br>
                         Total: ${Number(p.total).toLocaleString('es-CL', {style:'currency', currency:'CLP'})} | Estado: ${p.estado} | Pago: ${p.metodoPago || 'N/A'}<br>
                         Fecha: ${fechaPedido}<br>
                         <div style="margin:6px 0 0 0; font-size:0.98em; color:#444;">${productosDetalle}</div>
@@ -552,7 +564,12 @@ button:hover {
                 const res = await fetch(`/api/clientes/ciudad/${ciudad}`);
                 const clientes = await res.json();
                 document.getElementById('resultado-ciudad').innerHTML = 
-                    clientes.length ? clientes.map(c => `${c.nombre} - ${c.email}`).join('<br>') : 'No encontrado';
+                    clientes.length ? clientes.map(c => {
+                        let direccion = c.direccion ? `${c.direccion.calle || ''} ${c.direccion.numero || ''}, ${c.direccion.ciudad || ''}` : '';
+                        return `<strong>${c.nombre} ${c.apellidos || ''}</strong><br>
+                                Teléfono: ${c.telefono}<br>
+                                Dirección: ${direccion}`;
+                    }).join('<hr style="margin:6px 0;">') : 'No encontrado';
             } catch (error) {
                 alert('Error: ' + error.message);
             }
@@ -566,7 +583,12 @@ button:hover {
                 const res = await fetch(`/api/clientes/fecha/${fecha}`);
                 const clientes = await res.json();
                 document.getElementById('resultado-fecha').innerHTML = 
-                    clientes.length ? clientes.map(c => `${c.nombre} - ${c.ciudad}`).join('<br>') : 'No encontrado';
+                    clientes.length ? clientes.map(c => {
+                        let direccion = c.direccion ? `${c.direccion.calle || ''} ${c.direccion.numero || ''}, ${c.direccion.ciudad || ''}` : '';
+                        return `<strong>${c.nombre} ${c.apellidos || ''}</strong><br>
+                                Teléfono: ${c.telefono}<br>
+                                Dirección: ${direccion}`;
+                    }).join('<hr style="margin:6px 0;">') : 'No encontrado';
             } catch (error) {
                 alert('Error: ' + error.message);
             }
@@ -595,9 +617,11 @@ button:hover {
                 const res = await fetch(`/api/pedidos/cliente/${clienteId}`);
                 const pedidos = await res.json();
                 document.getElementById('resultado-pedidos-cliente').innerHTML = 
-                    pedidos.length ? pedidos.map(p => 
-                        `Pedido #${p._id.substring(0, 6)} - $${p.total} - ${p.estado}`
-                    ).join('<br>') : 'No encontrado';
+                    pedidos.length ? pedidos.map(p => {
+                        let cli = p.clienteId || {};
+                        let clienteResumen = `${cli.nombre || ''} ${cli.apellidos || ''} (${cli.telefono || ''})`;
+                        return `Pedido #${p._id.substring(0, 6)} - ${clienteResumen} - $${p.total} - ${p.estado}`;
+                    }).join('<br>') : 'No encontrado';
             } catch (error) {
                 alert('Error: ' + error.message);
             }

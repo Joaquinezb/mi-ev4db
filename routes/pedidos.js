@@ -41,7 +41,7 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const pedidos = await Pedido.find()
-      .populate('clienteId', 'nombre')
+      .populate('clienteId', 'nombre apellidos telefono')
       .populate('productos.productoId', 'nombre precio');
       
     res.json(pedidos);
@@ -54,6 +54,7 @@ router.get('/', async (req, res) => {
 router.get('/cliente/:clienteId', async (req, res) => {
   try {
     const pedidos = await Pedido.find({ clienteId: req.params.clienteId })
+      .populate('clienteId', 'nombre apellidos telefono')
       .populate('productos.productoId', 'nombre precio codigo');
       
     res.json(pedidos);
