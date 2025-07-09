@@ -6,18 +6,30 @@ const Producto = require('../models/Producto');
 // Crear pedido
 router.post('/', async (req, res) => {
   try {
-    // Calcular total basado en productos
+    // Calcular total y armar productos con info extra
     let total = 0;
+    const productosDetallados = [];
     for (const item of req.body.productos) {
       const producto = await Producto.findById(item.productoId);
-      total += producto.precio * item.cantidad;
+      if (!producto) throw new Error('Producto no encontrado');
+      const precioUnitario = producto.precio;
+      const totalComprado = precioUnitario * item.cantidad;
+      total += totalComprado;
+      productosDetallados.push({
+        productoId: item.productoId,
+        codigoProducto: producto.codigo,
+        nombreProducto: producto.nombre,
+        cantidad: item.cantidad,
+        precioUnitario,
+        totalComprado
+      });
     }
-
     const nuevoPedido = new Pedido({
       ...req.body,
-      total
+      productos: productosDetallados,
+      total,
+      fechaPedido: new Date()
     });
-    
     const pedidoGuardado = await nuevoPedido.save();
     res.status(201).json(pedidoGuardado);
   } catch (error) {
@@ -54,15 +66,27 @@ router.get('/cliente/:clienteId', async (req, res) => {
 // Actualizar pedido
 router.put('/:id', async (req, res) => {
   try {
-    // Calcular total actualizado
+    // Calcular total actualizado y armar productos con info extra
     let total = 0;
+    const productosDetallados = [];
     for (const item of req.body.productos) {
       const producto = await Producto.findById(item.productoId);
-      total += producto.precio * item.cantidad;
+      if (!producto) throw new Error('Producto no encontrado');
+      const precioUnitario = producto.precio;
+      const totalComprado = precioUnitario * item.cantidad;
+      total += totalComprado;
+      productosDetallados.push({
+        productoId: item.productoId,
+        codigoProducto: producto.codigo,
+        nombreProducto: producto.nombre,
+        cantidad: item.cantidad,
+        precioUnitario,
+        totalComprado
+      });
     }
     const pedidoActualizado = await Pedido.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, total },
+      { ...req.body, productos: productosDetallados, total },
       { new: true }
     );
     res.json(pedidoActualizado);

@@ -130,9 +130,11 @@ button:hover {
                 <form id="form-cliente">
                     <input type="hidden" name="_id">
                     <input name="nombre" placeholder="Nombre" required>
-                    <input name="email" placeholder="Email" required>
+                    <input name="apellidos" placeholder="Apellidos" required>
                     <input name="telefono" placeholder="Teléfono" required>
-                    <input name="ciudad" placeholder="Ciudad" required>
+                    <input name="direccion[calle]" placeholder="Calle" required>
+                    <input name="direccion[numero]" placeholder="Número" required>
+                    <input name="direccion[ciudad]" placeholder="Ciudad" required>
                     <button type="submit">Guardar</button>
                 </form>
                 <div id="lista-clientes"></div>
@@ -160,6 +162,11 @@ button:hover {
                     </style>
                     <input name="descripcion" placeholder="Descripción">
                     <input name="stock" type="number" placeholder="Stock" required>
+                    <select name="estado" required>
+                        <option value="activo">Activo</option>
+                        <option value="inactivo">Inactivo</option>
+                        <option value="descontinuado">Descontinuado</option>
+                    </select>
                     <button type="submit">Guardar</button>
                 </form>
                 <div id="error-producto" style="color:#DC2626;display:none;margin-bottom:8px"></div>
@@ -175,6 +182,12 @@ button:hover {
                 </select>
                 <div id="productos-container"></div>
                 <button type="button" onclick="agregarProducto()">Agregar Producto</button>
+                <select name="metodoPago" required>
+                    <option value="">Método de pago</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="transferencia">Transferencia</option>
+                </select>
                 <select name="estado">
                     <option value="pendiente">Pendiente</option>
                     <option value="procesando">Procesando</option>
@@ -255,7 +268,6 @@ button:hover {
                 const res = await fetch('/api/clientes');
                 const clientes = await res.json();
                 document.getElementById('lista-clientes').innerHTML = clientes.map(c => {
-                    // Mostrar la fecha en formato UTC dd-mm-aaaa para que coincida con la base de datos pero en formato solicitado
                     let fecha = '';
                     if (c.fechaRegistro) {
                         const date = new Date(c.fechaRegistro);
@@ -264,10 +276,16 @@ button:hover {
                         const year = date.getUTCFullYear();
                         fecha = `${day}-${month}-${year}`;
                     }
+                    // Mostrar apellidos y dirección completa
+                    let direccion = '';
+                    if (c.direccion) {
+                        direccion = `${c.direccion.calle || ''} ${c.direccion.numero || ''}, ${c.direccion.ciudad || ''}`;
+                    }
                     return `
                     <div class="item">
-                        <strong>${c.nombre}</strong> - ${c.ciudad}<br>
-                        ${c.email} | ${c.telefono}<br>
+                        <strong>${c.nombre} ${c.apellidos || ''}</strong><br>
+                        Teléfono: ${c.telefono}<br>
+                        <span style="color:#888;font-size:0.95em">${direccion}</span><br>
                         <span style="color:#888;font-size:0.95em">Fecha ingreso: ${fecha}</span>
                         <div class="buttons">
                             <button onclick=\"editarCliente(${JSON.stringify(c).replace(/\"/g, '&quot;')})\">Editar</button>
@@ -285,7 +303,7 @@ button:hover {
             try {
                 const res = await fetch('/api/clientes');
                 const clientes = await res.json();
-                const options = clientes.map(c => `<option value="${c._id}">${c.nombre}</option>`).join('');
+                const options = clientes.map(c => `<option value="${c._id}">${c.nombre} ${c.apellidos || ''} (${c.telefono})</option>`).join('');
                 document.getElementById('select-cliente').innerHTML = '<option value="">Seleccione cliente</option>' + options;
                 document.getElementById('cliente-pedidos').innerHTML = '<option value="">Seleccione cliente</option>' + options;
             } catch (error) {
@@ -295,9 +313,14 @@ button:hover {
 
         function editarCliente(cliente) {
             const form = document.getElementById('form-cliente');
-            form.reset(); // Limpiar el formulario antes de cargar los datos del cliente
+            form.reset();
+            if (cliente.direccion) {
+                form['direccion[calle]'].value = cliente.direccion.calle || '';
+                form['direccion[numero]'].value = cliente.direccion.numero || '';
+                form['direccion[ciudad]'].value = cliente.direccion.ciudad || '';
+            }
             Object.keys(cliente).forEach(key => {
-                if (form[key]) form[key].value = cliente[key];
+                if (form[key] && key !== 'direccion') form[key].value = cliente[key];
             });
         }
 
@@ -353,7 +376,7 @@ button:hover {
                 document.getElementById('lista-productos').innerHTML = productos.map(p => `
                     <div class="item">
                         <strong>${p.nombre}</strong> - ${Number(p.precio).toLocaleString('es-CL', {style:'currency', currency:'CLP'})}<br>
-                        Código: ${p.codigo} | Stock: ${p.stock}
+                        Código: ${p.codigo} | Stock: ${p.stock} | Estado: ${p.estado || 'N/A'}
                         <div class="buttons">
                             <button onclick="editarProducto(${JSON.stringify(p).replace(/\"/g, '&quot;')})">Editar</button>
                             <button class="delete" onclick="eliminarProducto('${p._id}')">Eliminar</button>
@@ -428,6 +451,7 @@ button:hover {
                     body: JSON.stringify({
                         clienteId: formData.get('clienteId'),
                         productos,
+                        metodoPago: formData.get('metodoPago'),
                         estado: formData.get('estado')
                     })
                 });
@@ -448,18 +472,37 @@ button:hover {
             try {
                 const res = await fetch('/api/pedidos');
                 const pedidos = await res.json();
-                document.getElementById('lista-pedidos').innerHTML = pedidos.map(p => `
+                document.getElementById('lista-pedidos').innerHTML = pedidos.map(p => {
+                    // Mostrar detalle completo de productos
+                    let productosDetalle = p.productos.map(pr => {
+                        let cod = pr.codigoProducto || pr.productoId?.codigo || '';
+                        let nombre = pr.nombreProducto || pr.productoId?.nombre || 'Producto';
+                        let precio = pr.precioUnitario !== undefined ? pr.precioUnitario : (pr.productoId?.precio || 0);
+                        let total = pr.totalComprado !== undefined ? pr.totalComprado : (pr.cantidad * precio);
+                        return `${pr.cantidad}x [${cod}] ${nombre} ($${Number(precio).toLocaleString('es-CL')}) = $${Number(total).toLocaleString('es-CL')}`;
+                    }).join('<br>');
+                    let fechaPedido = '';
+                    if (p.fechaPedido) {
+                        const date = new Date(p.fechaPedido);
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const year = date.getUTCFullYear();
+                        fechaPedido = `${day}-${month}-${year}`;
+                    }
+                    return `
                     <div class="item">
                         <strong>Pedido #${p._id.substring(0, 6)}</strong><br>
                         Cliente: ${p.clienteId?.nombre || 'N/A'}<br>
-                        Total: ${Number(p.total).toLocaleString('es-CL', {style:'currency', currency:'CLP'})} | Estado: ${p.estado}<br>
-                        ${p.productos.map(pr => `${pr.cantidad}x ${pr.productoId?.nombre || 'Producto'}`).join(', ')}
+                        Total: ${Number(p.total).toLocaleString('es-CL', {style:'currency', currency:'CLP'})} | Estado: ${p.estado} | Pago: ${p.metodoPago || 'N/A'}<br>
+                        Fecha: ${fechaPedido}<br>
+                        <div style="margin:6px 0 0 0; font-size:0.98em; color:#444;">${productosDetalle}</div>
                         <div class="buttons">
                             <button onclick='editarPedido(${JSON.stringify(p).replace(/"/g, "&quot;")})'>Editar</button>
                             <button class="delete" onclick="eliminarPedido('${p._id}')">Eliminar</button>
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (error) {
                 console.error('Error:', error);
             }

@@ -5,10 +5,11 @@ const Producto = require('../models/Producto');
 // Crear
 router.post('/', async (req, res) => {
   try {
-    const nuevo = new Producto(req.body);       
-    const producto = await nuevo.save();        
-    res.json(producto); 
-  } catch (error) {     
+    const { codigo, nombre, precio, descripcion, stock, estado } = req.body;
+    const nuevo = new Producto({ codigo, nombre, precio, descripcion, stock, estado });
+    const producto = await nuevo.save();
+    res.json(producto);
+  } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
@@ -34,11 +35,13 @@ router.get('/codigo/:codigo', async (req, res) => {
 });
 
 // Actualizar
-router.put('/:id', async (req, res) => {        
+router.put('/:id', async (req, res) => {
   try {
-    const producto = await Producto.findByIdAndUpdate(req.params.id, req.body, { new: true });  
-    res.json(producto); 
-  } catch (error) {     
+    const { codigo, nombre, precio, descripcion, stock, estado } = req.body;
+    const update = { codigo, nombre, precio, descripcion, stock, estado };
+    const producto = await Producto.findByIdAndUpdate(req.params.id, update, { new: true });
+    res.json(producto);
+  } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
