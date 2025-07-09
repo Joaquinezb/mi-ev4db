@@ -162,6 +162,7 @@ button:hover {
                     <input name="stock" type="number" placeholder="Stock" required>
                     <button type="submit">Guardar</button>
                 </form>
+                <div id="error-producto" style="color:#DC2626;display:none;margin-bottom:8px"></div>
                 <div id="lista-productos"></div>
             </div>
         </div>
@@ -317,18 +318,30 @@ button:hover {
             e.preventDefault();
             const datos = Object.fromEntries(new FormData(e.target));
             if (!datos._id) delete datos._id;
-            
+            const errorDiv = document.getElementById('error-producto');
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
             try {
-                await fetch(datos._id ? `/api/productos/${datos._id}` : '/api/productos', {
+                const response = await fetch(datos._id ? `/api/productos/${datos._id}` : '/api/productos', {
                     method: datos._id ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(datos)
                 });
-                
+                if (!response.ok) {
+                    const resJson = await response.json().catch(() => ({}));
+                    if (resJson && resJson.error && resJson.error.toLowerCase().includes('codigo')) {
+                        errorDiv.textContent = 'Ya existe un producto con ese código.';
+                        errorDiv.style.display = 'block';
+                        return;
+                    } else {
+                        throw new Error('Error en la solicitud');
+                    }
+                }
                 e.target.reset();
                 cargarProductos();
             } catch (error) {
-                alert('Error: ' + error.message);
+                errorDiv.textContent = 'Error: ' + error.message;
+                errorDiv.style.display = 'block';
             }
         });
 
@@ -357,6 +370,10 @@ button:hover {
             Object.keys(producto).forEach(key => {
                 if (form[key]) form[key].value = producto[key];
             });
+            // Ocultar mensaje de error al editar
+            const errorDiv = document.getElementById('error-producto');
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
         }
 
         async function eliminarProducto(id) {
