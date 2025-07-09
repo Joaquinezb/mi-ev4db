@@ -225,19 +225,23 @@ button:hover {
         // CLIENTES
         document.getElementById('form-cliente').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const datos = Object.fromEntries(new FormData(e.target));
-            if (!datos._id) delete datos._id;
-            
+            const form = e.target;
+            const datos = Object.fromEntries(new FormData(form));
+            // Si el campo _id está vacío, eliminarlo para evitar que se envíe en la creación
+            if (!datos._id || datos._id === "") {
+                delete datos._id;
+                form.querySelector('[name="_id"]').value = "";
+            }
             try {
                 const response = await fetch(datos._id ? `/api/clientes/${datos._id}` : '/api/clientes', {
                     method: datos._id ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(datos)
                 });
-                
                 if (!response.ok) throw new Error('Error en la solicitud');
-                
-                e.target.reset();
+                form.reset();
+                // Asegurarse de limpiar el campo _id después de guardar
+                form.querySelector('[name="_id"]').value = "";
                 cargarClientes();
                 cargarSelectsClientes();
             } catch (error) {
@@ -249,9 +253,16 @@ button:hover {
             try {
                 const res = await fetch('/api/clientes');
                 const clientes = await res.json();
-                
                 document.getElementById('lista-clientes').innerHTML = clientes.map(c => {
-                    const fecha = c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString('es-CL') : '';
+                    // Mostrar la fecha en formato UTC dd-mm-aaaa para que coincida con la base de datos pero en formato solicitado
+                    let fecha = '';
+                    if (c.fechaRegistro) {
+                        const date = new Date(c.fechaRegistro);
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const year = date.getUTCFullYear();
+                        fecha = `${day}-${month}-${year}`;
+                    }
                     return `
                     <div class="item">
                         <strong>${c.nombre}</strong> - ${c.ciudad}<br>
@@ -283,6 +294,7 @@ button:hover {
 
         function editarCliente(cliente) {
             const form = document.getElementById('form-cliente');
+            form.reset(); // Limpiar el formulario antes de cargar los datos del cliente
             Object.keys(cliente).forEach(key => {
                 if (form[key]) form[key].value = cliente[key];
             });
@@ -293,6 +305,10 @@ button:hover {
                 await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
                 cargarClientes();
                 cargarSelectsClientes();
+                // Limpiar el formulario y el campo _id si se estaba editando
+                const form = document.getElementById('form-cliente');
+                form.reset();
+                form.querySelector('[name="_id"]').value = "";
             }
         }
 
