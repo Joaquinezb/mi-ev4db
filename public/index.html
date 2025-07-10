@@ -383,7 +383,8 @@ button:hover {
                 document.getElementById('lista-productos').innerHTML = productos.map(p => `
                     <div class="item">
                         <strong>${p.nombre}</strong> - ${Number(p.precio).toLocaleString('es-CL', {style:'currency', currency:'CLP'})}<br>
-                        Código: ${p.codigo} | Stock: ${p.stock} | Estado: ${p.estado || 'N/A'}
+                        Código: ${p.codigo} | Stock: ${p.stock} | Estado: ${p.estado || 'N/A'}<br>
+                        <span style="color:#555;font-size:0.97em">${p.descripcion ? 'Descripción: ' + p.descripcion : ''}</span>
                         <div class="buttons">
                             <button onclick="editarProducto(${JSON.stringify(p).replace(/\"/g, '&quot;')})">Editar</button>
                             <button class="delete" onclick="eliminarProducto('${p._id}')">Eliminar</button>
@@ -612,7 +613,6 @@ button:hover {
         async function buscarPedidosPorCliente() {
             const clienteId = document.getElementById('cliente-pedidos').value;
             if (!clienteId) return;
-            
             try {
                 const res = await fetch(`/api/pedidos/cliente/${clienteId}`);
                 const pedidos = await res.json();
@@ -620,8 +620,21 @@ button:hover {
                     pedidos.length ? pedidos.map(p => {
                         let cli = p.clienteId || {};
                         let clienteResumen = `${cli.nombre || ''} ${cli.apellidos || ''} (${cli.telefono || ''})`;
-                        return `Pedido #${p._id.substring(0, 6)} - ${clienteResumen} - $${p.total} - ${p.estado}`;
-                    }).join('<br>') : 'No encontrado';
+                        // Mostrar productos comprados
+                        let productosDetalle = p.productos.map(pr => {
+                            let cod = pr.codigoProducto || pr.productoId?.codigo || '';
+                            let nombre = pr.nombreProducto || pr.productoId?.nombre || 'Producto';
+                            let precio = pr.precioUnitario !== undefined ? pr.precioUnitario : (pr.productoId?.precio || 0);
+                            let total = pr.totalComprado !== undefined ? pr.totalComprado : (pr.cantidad * precio);
+                            return `${pr.cantidad}x [${cod}] ${nombre} ($${Number(precio).toLocaleString('es-CL')}) = $${Number(total).toLocaleString('es-CL')}`;
+                        }).join('<br>');
+                        return `
+                            <div style="margin-bottom:12px">
+                                <strong>Pedido #${p._id.substring(0, 6)}</strong> - ${clienteResumen} - $${p.total} - ${p.estado}<br>
+                                <span style="color:#444;font-size:0.97em">${productosDetalle}</span>
+                            </div>
+                        `;
+                    }).join('') : 'No encontrado';
             } catch (error) {
                 alert('Error: ' + error.message);
             }
